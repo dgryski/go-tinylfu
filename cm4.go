@@ -2,7 +2,8 @@ package tinylfu
 
 // cm4 is a small conservative-update count-min sketch implementation with 4-bit counters
 type cm4 struct {
-	s [depth]nvec
+	s    [depth]nvec
+	mask uint32
 }
 
 const depth = 4
@@ -12,10 +13,13 @@ func newCM4(w int) *cm4 {
 		panic("cm4: bad width")
 	}
 
-	c := cm4{}
+	w32 := nextPowerOfTwo(uint32(w))
+	c := cm4{
+		mask: w32 - 1,
+	}
 
 	for i := 0; i < depth; i++ {
-		c.s[i] = newNvec(w)
+		c.s[i] = newNvec(int(w32))
 	}
 
 	return &c
@@ -24,11 +28,12 @@ func newCM4(w int) *cm4 {
 func (c *cm4) add(keyh uint64) {
 	h1, h2 := uint32(keyh), uint32(keyh>>32)
 
-	w := len(c.s[0]) * 2
+	var positions [depth]uint32
+
 	var min byte = 255
-	for i := 0; i < depth; i++ {
-		pos := (h1 + uint32(i)*h2) % uint32(w)
-		v := c.s[i].get(pos)
+	for i := range positions {
+		positions[i] = (h1 + uint32(i)*h2) & c.mask
+		v := c.s[i].get(positions[i])
 		if v < min {
 			min = v
 		}
@@ -36,8 +41,7 @@ func (c *cm4) add(keyh uint64) {
 
 	// conservative increment
 	if min < 15 {
-		for i := 0; i < depth; i++ {
-			pos := (h1 + uint32(i)*h2) % uint32(w)
+		for i, pos := range positions {
 			v := c.s[i].get(pos)
 			if v == min {
 				c.s[i].inc(pos)
@@ -49,10 +53,9 @@ func (c *cm4) add(keyh uint64) {
 func (c *cm4) estimate(keyh uint64) byte {
 	h1, h2 := uint32(keyh), uint32(keyh>>32)
 
-	w := len(c.s[0]) * 2
 	var min byte = 255
 	for i := 0; i < depth; i++ {
-		pos := (h1 + uint32(i)*h2) % uint32(w)
+		pos := (h1 + uint32(i)*h2) & c.mask
 		v := c.s[i].get(pos)
 		if v < min {
 			min = v
