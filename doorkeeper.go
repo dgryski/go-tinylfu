@@ -53,6 +53,9 @@ func (d *doorkeeper) insert(h uint64) bool {
 
 // Reset clears the bloom filter
 func (d *doorkeeper) reset() {
+	if d == nil {
+		return
+	}
 	for i := range d.filter {
 		d.filter[i] = 0
 	}
