@@ -86,6 +86,7 @@ func (slru *slruCache) Add(key string, value interface{}, keyh uint64) {
 	delete(slru.data, item.key)
 	item.key = key
 	item.value = value
+	item.keyh = keyh
 	slru.data[key] = e
 	slru.one.MoveToFront(e)
 }
