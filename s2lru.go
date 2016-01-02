@@ -3,7 +3,7 @@ package tinylfu
 import "container/list"
 
 type slruItem struct {
-	second bool
+	listid int
 	key    string
 	value  interface{}
 	keyh   uint64
@@ -16,9 +16,9 @@ type slruCache struct {
 	one, two       *list.List
 }
 
-func newSLRU(onecap, twocap int) *slruCache {
+func newSLRU(onecap, twocap int, data map[string]*list.Element) *slruCache {
 	return &slruCache{
-		data:   make(map[string]*list.Element),
+		data:   data,
 		onecap: onecap,
 		one:    list.New(),
 		twocap: twocap,
@@ -26,20 +26,14 @@ func newSLRU(onecap, twocap int) *slruCache {
 	}
 }
 
-// Get returns a value from the cache
-func (slru *slruCache) Get(key string) (interface{}, bool) {
-	v, ok := slru.data[key]
-
-	if !ok {
-		return nil, false
-	}
-
+// get updates the cache data structures for a get
+func (slru *slruCache) get(v *list.Element) {
 	item := v.Value.(*slruItem)
 
 	// already on list two?
-	if item.second {
+	if item.listid == 2 {
 		slru.two.MoveToFront(v)
-		return item.value, true
+		return
 	}
 
 	// must be list one
@@ -48,18 +42,19 @@ func (slru *slruCache) Get(key string) (interface{}, bool) {
 	if slru.two.Len() < slru.twocap {
 		// just do the remove/add
 		slru.one.Remove(v)
-		item.second = true
-		slru.data[key] = slru.two.PushFront(item)
-		return item.value, true
+		item.listid = 2
+		slru.data[item.key] = slru.two.PushFront(item)
+		return
 	}
 
 	back := slru.two.Back()
 	bitem := back.Value.(*slruItem)
 
 	// swap the key/values
-	bitem.key, item.key = item.key, bitem.key
-	bitem.value, item.value = item.value, bitem.value
-	bitem.keyh, item.keyh = item.keyh, bitem.keyh
+	*bitem, *item = *item, *bitem
+
+	bitem.listid = 2
+	item.listid = 1
 
 	// update pointers in the map
 	slru.data[item.key] = v
@@ -68,14 +63,15 @@ func (slru *slruCache) Get(key string) (interface{}, bool) {
 	// move the elements to the front of their lists
 	slru.one.MoveToFront(v)
 	slru.two.MoveToFront(back)
-
-	return bitem.value, true
 }
 
 // Set sets a value in the cache
-func (slru *slruCache) Add(key string, value interface{}, keyh uint64) {
+func (slru *slruCache) add(newitem slruItem) {
+
+	newitem.listid = 1
+
 	if slru.one.Len() < slru.onecap {
-		slru.data[key] = slru.one.PushFront(&slruItem{false, key, value, keyh})
+		slru.data[newitem.key] = slru.one.PushFront(&newitem)
 		return
 	}
 
@@ -84,10 +80,10 @@ func (slru *slruCache) Add(key string, value interface{}, keyh uint64) {
 	item := e.Value.(*slruItem)
 
 	delete(slru.data, item.key)
-	item.key = key
-	item.value = value
-	item.keyh = keyh
-	slru.data[key] = e
+
+	*item = newitem
+
+	slru.data[item.key] = e
 	slru.one.MoveToFront(e)
 }
 
@@ -105,7 +101,7 @@ func (slru *slruCache) Remove(key string) (interface{}, bool) {
 
 	item := v.Value.(*slruItem)
 
-	if item.second {
+	if item.listid == 2 {
 		slru.two.Remove(v)
 	} else {
 		slru.one.Remove(v)

@@ -5,6 +5,7 @@
 package tinylfu
 
 import (
+	"container/list"
 	"github.com/dchest/siphash"
 )
 
@@ -15,13 +16,18 @@ type T struct {
 	samples int
 	lru     *lruCache
 	slru    *slruCache
+	data    map[string]*list.Element
 }
 
 func New(size int, samples int) *T {
 
-	lruSize := size / 100
-	slruSize := int(float64(size) * (99.0 / 100.0))
+	const lruPct = 1
+
+	lruSize := (lruPct * size) / 100
+	slruSize := int(float64(size) * ((100.0 - lruPct) / 100.0))
 	slru20 := int(0.2 * float64(slruSize))
+
+	data := make(map[string]*list.Element, size)
 
 	return &T{
 		c:       newCM4(size),
@@ -29,8 +35,10 @@ func New(size int, samples int) *T {
 		samples: samples,
 		bouncer: newDoorkeeper(samples, 0.01),
 
-		lru:  newLRU(lruSize),
-		slru: newSLRU(slru20, slruSize-slru20),
+		data: data,
+
+		lru:  newLRU(lruSize, data),
+		slru: newSLRU(slru20, slruSize-slru20, data),
 	}
 }
 
@@ -43,30 +51,36 @@ func (t *T) Get(key string) (interface{}, bool) {
 		t.w = 0
 	}
 
-	keyh := siphash.Hash(0, 0, stringToSlice(key))
-
-	t.c.add(keyh)
-
-	if val, ok := t.lru.Get(key); ok {
-		return val, ok
+	val, ok := t.data[key]
+	if !ok {
+		keyh := siphash.Hash(0, 0, stringToSlice(key))
+		t.c.add(keyh)
+		return nil, false
 	}
 
-	if val, ok := t.slru.Get(key); ok {
-		return val, ok
+	item := val.Value.(*slruItem)
+
+	t.c.add(item.keyh)
+
+	if item.listid == 0 {
+		t.lru.get(val)
+	} else {
+		t.slru.get(val)
 	}
 
-	return nil, false
+	return item.value, true
 }
 
 func (t *T) Add(key string, val interface{}) {
-	okey, oval, evicted := t.lru.Add(key, val)
+
+	newitem := slruItem{0, key, val, siphash.Hash(0, 0, stringToSlice(key))}
+
+	oitem, evicted := t.lru.add(newitem)
 	if !evicted {
 		return
 	}
 
-	okeyh := siphash.Hash(0, 0, stringToSlice(okey))
-
-	if !t.bouncer.allow(okeyh) {
+	if !t.bouncer.allow(oitem.keyh) {
 		return
 	}
 
@@ -74,17 +88,17 @@ func (t *T) Add(key string, val interface{}) {
 	// TODO(dgryski): find a way to do this without poking into slru internals
 	victim := t.slru.one.Back()
 	if victim == nil {
-		t.slru.Add(okey, oval, okeyh)
+		t.slru.add(oitem)
 		return
 	}
 
 	item := victim.Value.(*slruItem)
 	vcount := t.c.estimate(item.keyh)
-	ocount := t.c.estimate(okeyh)
+	ocount := t.c.estimate(oitem.keyh)
 
 	if ocount < vcount {
 		return
 	}
 
-	t.slru.Add(okey, oval, okeyh)
+	t.slru.add(oitem)
 }

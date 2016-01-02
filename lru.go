@@ -2,11 +2,6 @@ package tinylfu
 
 import "container/list"
 
-type lruItem struct {
-	key   string
-	value interface{}
-}
-
 // Cache is an LRU cache.  It is not safe for concurrent access.
 type lruCache struct {
 	data map[string]*list.Element
@@ -14,45 +9,39 @@ type lruCache struct {
 	ll   *list.List
 }
 
-func newLRU(cap int) *lruCache {
+func newLRU(cap int, data map[string]*list.Element) *lruCache {
 	return &lruCache{
-		data: make(map[string]*list.Element),
+		data: data,
 		cap:  cap,
 		ll:   list.New(),
 	}
 }
 
 // Get returns a value from the cache
-func (lru *lruCache) Get(key string) (interface{}, bool) {
-	v, ok := lru.data[key]
-	if !ok {
-		return nil, false
-	}
-
-	item := v.Value.(*lruItem)
+func (lru *lruCache) get(v *list.Element) {
 	lru.ll.MoveToFront(v)
-	return item.value, true
 }
 
 // Set sets a value in the cache
-func (lru *lruCache) Add(key string, value interface{}) (oldkey string, oldval interface{}, evicted bool) {
+func (lru *lruCache) add(newitem slruItem) (oitem slruItem, evicted bool) {
 	if lru.ll.Len() < lru.cap {
-		lru.data[key] = lru.ll.PushFront(&lruItem{key, value})
-		return "", nil, false
+		lru.data[newitem.key] = lru.ll.PushFront(&newitem)
+		return slruItem{}, false
 	}
 
 	// reuse the tail item
 	e := lru.ll.Back()
-	item := e.Value.(*lruItem)
+	item := e.Value.(*slruItem)
 
 	delete(lru.data, item.key)
-	oldkey, oldval = item.key, item.value
-	item.key = key
-	item.value = value
-	lru.data[key] = e
+
+	oitem = *item
+	*item = newitem
+
+	lru.data[item.key] = e
 	lru.ll.MoveToFront(e)
 
-	return oldkey, oldval, true
+	return oitem, true
 }
 
 // Len returns the total number of items in the cache
@@ -66,7 +55,7 @@ func (lru *lruCache) Remove(key string) (interface{}, bool) {
 	if !ok {
 		return nil, false
 	}
-	item := v.Value.(*lruItem)
+	item := v.Value.(*slruItem)
 	lru.ll.Remove(v)
 	delete(lru.data, key)
 	return item.value, true

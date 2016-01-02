@@ -35,7 +35,6 @@ func (d *doorkeeper) allow(keyh uint64) bool {
 	if d == nil {
 		return true
 	}
-
 	alreadyPresent := d.insert(keyh)
 	return alreadyPresent
 }
