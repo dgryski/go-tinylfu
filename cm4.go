@@ -93,6 +93,6 @@ func (n nvec) inc(i uint32) {
 
 func (n nvec) reset() {
 	for i := range n {
-		n[i] = ((n[i] & 0xf0) >> 1) | ((n[i] & 0x0f) >> 1)
+		n[i] = (n[i] >> 1) & 0x77
 	}
 }

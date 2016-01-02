@@ -50,6 +50,12 @@ func TestNvec(t *testing.T) {
 			t.Errorf("n[0]=%x, want 0x1f: (n=% 02x)", n[0], n)
 		}
 	}
+
+	n.reset()
+
+	if n[0] != 0x70 {
+		t.Errorf("n[0]=%x, want 0x70 (n=% 02x)", n[0], n)
+	}
 }
 
 func TestCM4(t *testing.T) {
