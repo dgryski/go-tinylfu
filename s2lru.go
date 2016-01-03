@@ -70,7 +70,7 @@ func (slru *slruCache) add(newitem slruItem) {
 
 	newitem.listid = 1
 
-	if slru.one.Len() < slru.onecap {
+	if slru.one.Len() < slru.onecap || (slru.Len() < slru.onecap+slru.twocap) {
 		slru.data[newitem.key] = slru.one.PushFront(&newitem)
 		return
 	}
@@ -89,15 +89,11 @@ func (slru *slruCache) add(newitem slruItem) {
 
 func (slru *slruCache) victim() *slruItem {
 
-	if slru.one.Len() < slru.onecap {
+	if slru.Len() < slru.onecap+slru.twocap {
 		return nil
 	}
 
 	v := slru.one.Back()
-
-	if v == nil {
-		return nil
-	}
 
 	return v.Value.(*slruItem)
 }
