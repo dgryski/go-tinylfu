@@ -28,25 +28,9 @@ func newCM4(w int) *cm4 {
 func (c *cm4) add(keyh uint64) {
 	h1, h2 := uint32(keyh), uint32(keyh>>32)
 
-	var positions [depth]uint32
-
-	var min byte = 255
-	for i := range positions {
-		positions[i] = (h1 + uint32(i)*h2) & c.mask
-		v := c.s[i].get(positions[i])
-		if v < min {
-			min = v
-		}
-	}
-
-	// conservative increment
-	if min < 15 {
-		for i, pos := range positions {
-			v := c.s[i].get(pos)
-			if v == min {
-				c.s[i].inc(pos)
-			}
-		}
+	for i := range c.s {
+		pos := (h1 + uint32(i)*h2) & c.mask
+		c.s[i].inc(pos)
 	}
 }
 
