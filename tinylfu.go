@@ -80,14 +80,14 @@ func (t *T) Add(key string, val interface{}) {
 		return
 	}
 
-	if !t.bouncer.allow(oitem.keyh) {
-		return
-	}
-
 	// estimate count of what will be evicted from slru
 	victim := t.slru.victim()
 	if victim == nil {
 		t.slru.add(oitem)
+		return
+	}
+
+	if !t.bouncer.allow(oitem.keyh) {
 		return
 	}
 
