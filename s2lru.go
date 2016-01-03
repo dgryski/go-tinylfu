@@ -104,7 +104,7 @@ func (slru *slruCache) victim() *slruItem {
 
 // Len returns the total number of items in the cache
 func (slru *slruCache) Len() int {
-	return len(slru.data)
+	return slru.one.Len() + slru.two.Len()
 }
 
 // Remove removes an item from the cache, returning the item and a boolean indicating if it was found
