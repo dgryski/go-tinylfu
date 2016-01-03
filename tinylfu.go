@@ -85,15 +85,13 @@ func (t *T) Add(key string, val interface{}) {
 	}
 
 	// estimate count of what will be evicted from slru
-	// TODO(dgryski): find a way to do this without poking into slru internals
-	victim := t.slru.one.Back()
+	victim := t.slru.victim()
 	if victim == nil {
 		t.slru.add(oitem)
 		return
 	}
 
-	item := victim.Value.(*slruItem)
-	vcount := t.c.estimate(item.keyh)
+	vcount := t.c.estimate(victim.keyh)
 	ocount := t.c.estimate(oitem.keyh)
 
 	if ocount < vcount {

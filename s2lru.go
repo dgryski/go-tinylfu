@@ -87,6 +87,21 @@ func (slru *slruCache) add(newitem slruItem) {
 	slru.one.MoveToFront(e)
 }
 
+func (slru *slruCache) victim() *slruItem {
+
+	if slru.one.Len() < slru.onecap {
+		return nil
+	}
+
+	v := slru.one.Back()
+
+	if v == nil {
+		return nil
+	}
+
+	return v.Value.(*slruItem)
+}
+
 // Len returns the total number of items in the cache
 func (slru *slruCache) Len() int {
 	return len(slru.data)
