@@ -62,13 +62,14 @@ func (t *T) Get(key string) (interface{}, bool) {
 
 	t.c.add(item.keyh)
 
+	v := item.value
 	if item.listid == 0 {
 		t.lru.get(val)
 	} else {
 		t.slru.get(val)
 	}
 
-	return item.value, true
+	return v, true
 }
 
 func (t *T) Add(key string, val interface{}) {
