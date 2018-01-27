@@ -6,7 +6,7 @@ package tinylfu
 
 import (
 	"container/list"
-	"github.com/dchest/siphash"
+	"github.com/dgryski/go-metro"
 )
 
 type T struct {
@@ -53,7 +53,7 @@ func (t *T) Get(key string) (interface{}, bool) {
 
 	val, ok := t.data[key]
 	if !ok {
-		keyh := siphash.Hash(0, 0, stringToSlice(key))
+		keyh := metro.Hash64Str(key, 0)
 		t.c.add(keyh)
 		return nil, false
 	}
@@ -74,7 +74,7 @@ func (t *T) Get(key string) (interface{}, bool) {
 
 func (t *T) Add(key string, val interface{}) {
 
-	newitem := slruItem{0, key, val, siphash.Hash(0, 0, stringToSlice(key))}
+	newitem := slruItem{0, key, val, metro.Hash64Str(key, 0)}
 
 	oitem, evicted := t.lru.add(newitem)
 	if !evicted {
