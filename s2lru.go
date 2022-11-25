@@ -102,7 +102,7 @@ func (slru *slruCache[V]) Len() int {
 }
 
 // Remove removes an item from the cache, returning the item and a boolean indicating if it was found
-func (slru *slruCache[V]) Remove(key string) (V, bool) {
+func (slru *slruCache[V]) Remove(key string) (*V, bool) {
 	v, ok := slru.data[key]
 	if !ok {
 		return nil, false
@@ -118,5 +118,5 @@ func (slru *slruCache[V]) Remove(key string) (V, bool) {
 
 	delete(slru.data, key)
 
-	return item.value, true
+	return &item.value, true
 }

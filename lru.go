@@ -48,7 +48,7 @@ func (lru *lruCache[V]) Len() int {
 }
 
 // Remove removes an item from the cache, returning the item and a boolean indicating if it was found
-func (lru *lruCache[V]) Remove(key string) (V, bool) {
+func (lru *lruCache[V]) Remove(key string) (*V, bool) {
 	v, ok := lru.data[key]
 	if !ok {
 		return nil, false
@@ -56,5 +56,5 @@ func (lru *lruCache[V]) Remove(key string) (V, bool) {
 	item := v.Value
 	lru.ll.Remove(v)
 	delete(lru.data, key)
-	return item.value, true
+	return &item.value, true
 }
