@@ -5,21 +5,20 @@
 package tinylfu
 
 import (
-	"container/list"
 	"github.com/dgryski/go-metro"
 )
 
-type T struct {
+type T[V any] struct {
 	c       *cm4
 	bouncer *doorkeeper
 	w       int
 	samples int
-	lru     *lruCache
-	slru    *slruCache
-	data    map[string]*list.Element
+	lru     *lruCache[V]
+	slru    *slruCache[V]
+	data    map[string]*Element[slruItem[V]]
 }
 
-func New(size int, samples int) *T {
+func New[V any](size int, samples int) *T[V] {
 
 	const lruPct = 1
 
@@ -29,7 +28,7 @@ func New(size int, samples int) *T {
 	}
 	slruSize := int(float64(size) * ((100.0 - lruPct) / 100.0))
 	if slruSize < 1 {
-		slruSize  = 1
+		slruSize = 1
 
 	}
 	slru20 := int(0.2 * float64(slruSize))
@@ -37,9 +36,9 @@ func New(size int, samples int) *T {
 		slru20 = 1
 	}
 
-	data := make(map[string]*list.Element, size)
+	data := make(map[string]*Element[slruItem[V]], size)
 
-	return &T{
+	return &T[V]{
 		c:       newCM4(size),
 		w:       0,
 		samples: samples,
@@ -47,12 +46,12 @@ func New(size int, samples int) *T {
 
 		data: data,
 
-		lru:  newLRU(lruSize, data),
-		slru: newSLRU(slru20, slruSize-slru20, data),
+		lru:  newLRU[V](lruSize, data),
+		slru: newSLRU[V](slru20, slruSize-slru20, data),
 	}
 }
 
-func (t *T) Get(key string) (interface{}, bool) {
+func (t *T[V]) Get(key string) (V, bool) {
 
 	t.w++
 	if t.w == t.samples {
@@ -68,7 +67,7 @@ func (t *T) Get(key string) (interface{}, bool) {
 		return nil, false
 	}
 
-	item := val.Value.(*slruItem)
+	item := val.Value
 
 	t.c.add(item.keyh)
 
@@ -82,9 +81,9 @@ func (t *T) Get(key string) (interface{}, bool) {
 	return v, true
 }
 
-func (t *T) Add(key string, val interface{}) {
+func (t *T[V]) Add(key string, val V) {
 
-	newitem := slruItem{0, key, val, metro.Hash64Str(key, 0)}
+	newitem := slruItem[V]{0, key, val, metro.Hash64Str(key, 0)}
 
 	oitem, evicted := t.lru.add(newitem)
 	if !evicted {
