@@ -67,12 +67,10 @@ func (t *T[V]) Get(key string) (*V, bool) {
 		return nil, false
 	}
 
-	item := val.Value
+	t.c.add(val.Value.keyh)
 
-	t.c.add(item.keyh)
-
-	v := item.value
-	if item.listid == 0 {
+	v := val.Value.value
+	if val.Value.listid == 0 {
 		t.lru.get(val)
 	} else {
 		t.slru.get(val)

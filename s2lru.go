@@ -26,10 +26,9 @@ func newSLRU[V any](onecap, twocap int, data map[string]*Element[slruItem[V]]) *
 
 // get updates the cache data structures for a get
 func (slru *slruCache[V]) get(v *Element[slruItem[V]]) {
-	item := v.Value
 
 	// already on list two?
-	if item.listid == 2 {
+	if v.Value.listid == 2 {
 		slru.two.MoveToFront(v)
 		return
 	}
@@ -40,23 +39,22 @@ func (slru *slruCache[V]) get(v *Element[slruItem[V]]) {
 	if slru.two.Len() < slru.twocap {
 		// just do the remove/add
 		slru.one.Remove(v)
-		item.listid = 2
-		slru.data[item.key] = slru.two.PushFront(item)
+		v.Value.listid = 2
+		slru.data[v.Value.key] = slru.two.PushFront(v.Value)
 		return
 	}
 
 	back := slru.two.Back()
-	bitem := back.Value
 
 	// swap the key/values
-	*bitem, *item = *item, *bitem
+	*back.Value, *v.Value = *v.Value, *back.Value
 
-	bitem.listid = 2
-	item.listid = 1
+	back.Value.listid = 2
+	v.Value.listid = 1
 
 	// update pointers in the map
-	slru.data[item.key] = v
-	slru.data[bitem.key] = back
+	slru.data[v.Value.key] = v
+	slru.data[back.Value.key] = back
 
 	// move the elements to the front of their lists
 	slru.one.MoveToFront(v)
@@ -75,13 +73,12 @@ func (slru *slruCache[V]) add(newitem slruItem[V]) {
 
 	// reuse the tail item
 	e := slru.one.Back()
-	item := e.Value
 
-	delete(slru.data, item.key)
+	delete(slru.data, e.Value.key)
 
-	*item = newitem
+	*e.Value = newitem
 
-	slru.data[item.key] = e
+	slru.data[e.Value.key] = e
 	slru.one.MoveToFront(e)
 }
 
@@ -108,9 +105,7 @@ func (slru *slruCache[V]) Remove(key string) (*V, bool) {
 		return nil, false
 	}
 
-	item := v.Value
-
-	if item.listid == 2 {
+	if v.Value.listid == 2 {
 		slru.two.Remove(v)
 	} else {
 		slru.one.Remove(v)
@@ -118,5 +113,5 @@ func (slru *slruCache[V]) Remove(key string) (*V, bool) {
 
 	delete(slru.data, key)
 
-	return &item.value, true
+	return &v.Value.value, true
 }

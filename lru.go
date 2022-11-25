@@ -29,14 +29,13 @@ func (lru *lruCache[V]) add(newitem slruItem[V]) (oitem slruItem[V], evicted boo
 
 	// reuse the tail item
 	e := lru.ll.Back()
-	item := e.Value
 
-	delete(lru.data, item.key)
+	delete(lru.data, e.Value.key)
 
-	oitem = *item
-	*item = newitem
+	oitem = *e.Value
+	*e.Value = newitem
 
-	lru.data[item.key] = e
+	lru.data[e.Value.key] = e
 	lru.ll.MoveToFront(e)
 
 	return oitem, true
@@ -53,8 +52,7 @@ func (lru *lruCache[V]) Remove(key string) (*V, bool) {
 	if !ok {
 		return nil, false
 	}
-	item := v.Value
 	lru.ll.Remove(v)
 	delete(lru.data, key)
-	return &item.value, true
+	return &v.Value.value, true
 }
