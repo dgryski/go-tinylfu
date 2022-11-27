@@ -9,19 +9,26 @@ import (
 )
 
 type T[V any] struct {
-	c       *cm4
-	bouncer *doorkeeper
-	w       int
-	samples int
-	lru     *lruCache[V]
-	slru    *slruCache[V]
-	data    map[string]*Element[slruItem[V]]
+	c           *cm4
+	bouncer     *doorkeeper
+	w           int
+	samples     int
+	lru         *lruCache[V]
+	slru        *slruCache[V]
+	data        map[string]*Element[slruItem[V]]
+	hits        uint64
+	misses      uint64
+	lruPct      int
+	interval    int
+	percentage  float32
+	wentUp      bool
+	lastSuccess float32
+	size        int
 }
 
 func New[V any](size int, samples int) *T[V] {
 
 	const lruPct = 1
-
 	lruSize := (lruPct * size) / 100
 	if lruSize < 1 {
 		lruSize = 1
@@ -48,10 +55,66 @@ func New[V any](size int, samples int) *T[V] {
 
 		lru:  newLRU[V](lruSize, data),
 		slru: newSLRU[V](slru20, slruSize-slru20, data),
+
+		percentage: 6.25,
+		size:       size,
+		lruPct:     lruPct,
 	}
 }
 
 func (t *T[V]) Get(key string) (*V, bool) {
+	t.interval++
+
+	if t.interval == 5000 {
+		t.interval = 0
+
+		success := float32(t.hits) / (float32(t.misses) + float32(t.hits))
+
+		if success >= t.lastSuccess {
+			if t.wentUp {
+				newPct := float32(t.lruPct) + t.percentage
+				if newPct >= 100 {
+					newPct = 100
+				}
+				t.lru.cap = (int(newPct) * t.size) / 100
+				t.slru.twocap = int(float32(t.size) * ((100.0 - newPct) / 100.0))
+				t.slru.onecap = int(0.2 * float64(t.slru.twocap))
+			} else {
+				newPct := float32(t.lruPct) - t.percentage
+				if newPct <= 0 {
+					newPct = 0
+				}
+				t.lru.cap = (int(newPct) * t.size) / 100
+				t.slru.twocap = int(float32(t.size) * ((100.0 - newPct) / 100.0))
+				t.slru.onecap = int(0.2 * float64(t.slru.twocap))
+				t.wentUp = false
+			}
+		} else {
+			if t.wentUp {
+				newPct := float32(t.lruPct) - t.percentage
+				if newPct <= 0 {
+					newPct = 0
+				}
+				t.lru.cap = (int(newPct) * t.size) / 100
+				t.slru.twocap = int(float32(t.size) * ((100.0 - newPct) / 100.0))
+				t.slru.onecap = int(0.2 * float64(t.slru.twocap))
+			} else {
+				newPct := float32(t.lruPct) + t.percentage
+				if newPct >= 100 {
+					newPct = 100
+				}
+				t.lru.cap = (int(newPct) * t.size) / 100
+				t.slru.twocap = int(float32(t.size) * ((100.0 - newPct) / 100.0))
+				t.slru.onecap = int(0.2 * float64(t.slru.twocap))
+				t.wentUp = true
+			}
+		}
+
+		t.percentage -= 0.98
+		t.lastSuccess = success
+		t.hits = 0
+		t.misses = 0
+	}
 
 	t.w++
 	if t.w == t.samples {
@@ -64,9 +127,11 @@ func (t *T[V]) Get(key string) (*V, bool) {
 	if !ok {
 		keyh := metro.Hash64Str(key, 0)
 		t.c.add(keyh)
+		t.misses += 1
 		return nil, false
 	}
 
+	t.hits += 1
 	t.c.add(val.Value.keyh)
 
 	v := val.Value.value
