@@ -9,22 +9,23 @@ import (
 )
 
 type T[V any] struct {
-	c           *cm4
-	bouncer     *doorkeeper
-	w           int
-	samples     int
-	lru         *lruCache[V]
-	slru        *slruCache[V]
-	data        map[string]*Element[slruItem[V]]
-	hits        uint64
-	misses      uint64
-	lruPct      float32
-	interval    int
-	step        int
-	percentage  float32
-	wentUp      bool
-	lastSuccess float32
-	size        int
+	c              *cm4
+	bouncer        *doorkeeper
+	w              int
+	samples        int
+	lru            *lruCache[V]
+	slru           *slruCache[V]
+	data           map[string]*Element[slruItem[V]]
+	hits           uint64
+	misses         uint64
+	lruPct         float32
+	interval       int
+	step           int
+	percentage     float32
+	wentUp         bool
+	madeStepBigger bool
+	lastSuccess    float32
+	size           int
 }
 
 func New[V any](size int, samples int) *T[V] {
@@ -67,14 +68,14 @@ func New[V any](size int, samples int) *T[V] {
 func (t *T[V]) Get(key string) (*V, bool) {
 	t.interval++
 
-	if t.interval == t.step {
-		t.interval = 0
+	if t.interval == 5000 {
 
 		success := float32(t.hits) / (float32(t.misses) + float32(t.hits))
 		var newPct = t.lruPct
 		if success >= t.lastSuccess {
 			if t.wentUp {
 				newPct = t.lruPct + t.percentage
+				t.wentUp = true
 			} else {
 				newPct = t.lruPct - t.percentage
 				t.wentUp = false
@@ -82,6 +83,7 @@ func (t *T[V]) Get(key string) (*V, bool) {
 		} else {
 			if t.wentUp {
 				newPct = (t.lruPct) - t.percentage
+				t.wentUp = false
 			} else {
 				newPct = t.lruPct + t.percentage
 				t.wentUp = true
@@ -89,20 +91,28 @@ func (t *T[V]) Get(key string) (*V, bool) {
 		}
 
 		t.setCaps(newPct)
+		//t.percentage *= 0.98
 
-		t.percentage *= 0.98
-		if t.lastSuccess-success < -0.05 || t.lastSuccess-success > 0.05 {
-			t.percentage = 6.25
+		//if t.lastSuccess-success < -0.05 || t.lastSuccess-success > 0.05 {
+		//	t.percentage = 6.25
+		//}
 
-			if t.step > 100 {
-				t.step /= 10
-			}
-		} else {
-			if t.step < 5000000 {
-				t.step *= 10
-			}
-		}
-
+		//if success >= t.lastSuccess {
+		//	if t.madeStepBigger {
+		//		t.step *= 10
+		//	} else {
+		//		t.step /= 10
+		//		t.madeStepBigger = false
+		//	}
+		//} else {
+		//	if t.madeStepBigger {
+		//		t.step /= 10
+		//	} else {
+		//		newPct = t.lruPct + t.percentage
+		//		t.wentUp = true
+		//	}
+		//}
+		t.interval = 0
 		t.lastSuccess = success
 		t.hits = 0
 		t.misses = 0
