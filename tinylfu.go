@@ -97,23 +97,23 @@ func (t *T[V]) Get(key string) (*V, bool) {
 			t.percentage = 6.25
 		}
 
-		//if success >= t.lastSuccess {
-		//	if t.madeStepBigger {
-		//		t.step = int(float32(t.step) * 1.1)
-		//		t.madeStepBigger = true
-		//	} else {
-		//		t.step = int(float32(t.step) * 0.9)
-		//		t.madeStepBigger = false
-		//	}
-		//} else {
-		//	if t.madeStepBigger {
-		//		t.step = int(float32(t.step) * 0.9)
-		//		t.madeStepBigger = false
-		//	} else {
-		//		t.step = int(float32(t.step) * 1.1)
-		//		t.madeStepBigger = true
-		//	}
-		//}
+		if success >= t.lastSuccess {
+			if t.madeStepBigger {
+				t.step = int(float32(t.step) * 1.1)
+				t.madeStepBigger = true
+			} else {
+				t.step = int(float32(t.step) * 0.9)
+				t.madeStepBigger = false
+			}
+		} else {
+			if t.madeStepBigger {
+				t.step = int(float32(t.step) * 0.9)
+				t.madeStepBigger = false
+			} else {
+				t.step = int(float32(t.step) * 1.1)
+				t.madeStepBigger = true
+			}
+		}
 		t.interval = 0
 		t.lastSuccess = success
 		t.hits = 0
