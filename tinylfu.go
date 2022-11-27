@@ -161,11 +161,15 @@ func (t *T[V]) setCaps(percentage float32) {
 	if t.lru.cap < 1 {
 		t.lru.cap = 1
 	}
-	t.slru.twocap = int(float32(t.size) * ((100.0 - percentage) / 100.0))
+	slruSize := int(float32(t.size) * ((100.0 - percentage) / 100.0))
+
+	slru20 := int(0.2 * float64(slruSize))
+
+	t.slru.onecap = slru20
+	t.slru.twocap = slruSize
 	if t.slru.twocap < 1 {
 		t.slru.twocap = 1
 	}
-	t.slru.onecap = int(0.2 * float64(t.slru.twocap))
 	if t.slru.onecap < 1 {
 		t.slru.onecap = 1
 	}
