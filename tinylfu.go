@@ -99,7 +99,7 @@ func (t *T[V]) resize() {
 
 		t.lruPct = newPct
 
-		t.setCaps(newPct)
+		t.setCaps(float32(int(newPct)))
 		t.percentage *= 0.98
 
 		if t.lastSuccess-success < -0.05 || t.lastSuccess-success > 0.05 {
@@ -157,13 +157,13 @@ func (t *T[V]) setCaps(percentage float32) {
 	if percentage > 100 {
 		percentage = 100
 	}
-	t.lru.cap = (int(percentage) * t.size) / 100
+	t.lru.cap = int((percentage * float32(t.size)) / 100)
 	if t.lru.cap < 1 {
 		t.lru.cap = 1
 	}
 	slruSize := int(float32(t.size) * ((100.0 - percentage) / 100.0))
 
-	slru20 := int(0.2 * float64(slruSize))
+	slru20 := int(0.2 * float32(slruSize))
 
 	t.slru.onecap = slru20
 	t.slru.twocap = slruSize
