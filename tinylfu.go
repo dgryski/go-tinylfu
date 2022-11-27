@@ -65,7 +65,7 @@ func New[V any](size int, samples int) *T[V] {
 	}
 }
 
-func (t *T[V]) Get(key string) (*V, bool) {
+func (t *T[V]) resize() {
 	t.interval++
 
 	if t.interval == t.size {
@@ -117,6 +117,9 @@ func (t *T[V]) Get(key string) (*V, bool) {
 		t.lastSuccess = success
 
 	}
+}
+
+func (t *T[V]) Get(key string) (*V, bool) {
 
 	t.w++
 	if t.w == t.samples {
