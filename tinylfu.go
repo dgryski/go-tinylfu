@@ -61,7 +61,7 @@ func New[V any](size int, samples int) *T[V] {
 		percentage: 6.25,
 		size:       size,
 		lruPct:     lruPct,
-		step:       10,
+		step:       1000,
 	}
 }
 
@@ -101,23 +101,7 @@ func (t *T[V]) Get(key string) (*V, bool) {
 
 		t.setCaps(newPct)
 		t.percentage *= 0.98
-		if success >= t.lastSuccess {
-			if t.madeStepBigger {
-				t.step = int(float32(t.step) * 1.1)
-				t.madeStepBigger = true
-			} else {
-				t.step = int(float32(t.step) * 0.9)
-				t.madeStepBigger = false
-			}
-		} else {
-			if t.madeStepBigger {
-				t.step = int(float32(t.step) * 0.9)
-				t.madeStepBigger = false
-			} else {
-				t.step = int(float32(t.step) * 1.1)
-				t.madeStepBigger = true
-			}
-		}
+
 		if t.lastSuccess-success < -0.05 || t.lastSuccess-success > 0.05 {
 			t.percentage = 6.25
 			t.hits = 0
