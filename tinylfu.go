@@ -61,7 +61,7 @@ func New[V any](size int, samples int) *T[V] {
 		percentage: 6.25,
 		size:       size,
 		lruPct:     lruPct,
-		step:       100,
+		step:       1000,
 	}
 }
 
@@ -182,6 +182,12 @@ func (t *T[V]) setCaps(percentage float32) {
 	if t.slru.onecap < 1 {
 		t.slru.onecap = 1
 	}
+}
+func (t *T[V]) AllSizes() int {
+	return t.lru.cap + t.slru.twocap + t.slru.onecap
+}
+func (t *T[V]) AllKeys() int {
+	return len(t.data)
 }
 
 func (t *T[V]) Add(key string, val V) {
