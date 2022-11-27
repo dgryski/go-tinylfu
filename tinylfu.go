@@ -120,7 +120,7 @@ func (t *T[V]) resize() {
 }
 
 func (t *T[V]) Get(key string) (*V, bool) {
-
+	t.resize()
 	t.w++
 	if t.w == t.samples {
 		t.c.reset()
