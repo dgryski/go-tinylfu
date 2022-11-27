@@ -104,12 +104,13 @@ func (t *T[V]) Get(key string) (*V, bool) {
 
 		if t.lastSuccess-success < -0.05 || t.lastSuccess-success > 0.05 {
 			t.percentage = 6.25
+			t.hits = 0
+			t.misses = 0
 		}
 
 		t.interval = 0
 		t.lastSuccess = success
-		t.hits = 0
-		t.misses = 0
+
 	}
 
 	t.w++
