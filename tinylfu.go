@@ -61,7 +61,7 @@ func New[V any](size int, samples int) *T[V] {
 		percentage: 6.25,
 		size:       size,
 		lruPct:     lruPct,
-		step:       1000,
+		step:       10,
 	}
 }
 
