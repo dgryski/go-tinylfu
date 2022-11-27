@@ -89,6 +89,15 @@ func (t *T[V]) Get(key string) (*V, bool) {
 				t.wentUp = true
 			}
 		}
+		if newPct < 0 {
+			newPct = 0
+		}
+
+		if newPct > 100 {
+			newPct = 100
+		}
+
+		t.lruPct = newPct
 
 		t.setCaps(newPct)
 		t.percentage *= 0.98
