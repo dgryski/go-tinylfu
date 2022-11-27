@@ -88,7 +88,7 @@ func (t *T[V]) Get(key string) (*V, bool) {
 
 		t.setCaps(newPct)
 
-		t.percentage *= 0.98
+		t.percentage *= 0.9
 		t.lastSuccess = success
 		t.hits = 0
 		t.misses = 0
