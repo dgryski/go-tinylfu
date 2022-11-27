@@ -123,12 +123,12 @@ func (t *T[V]) Get(key string) (*V, bool) {
 }
 
 func (t *T[V]) setCaps(percentage float32) {
-	if percentage < 1 {
-		percentage = 1
+	if percentage < 0 {
+		percentage = 0
 	}
 
-	if percentage > 99 {
-		percentage = 99
+	if percentage > 100 {
+		percentage = 100
 	}
 	t.lru.cap = (int(percentage) * t.size) / 100
 	if t.lru.cap < 1 {
