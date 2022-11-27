@@ -20,6 +20,7 @@ type T[V any] struct {
 	misses      uint64
 	lruPct      float32
 	interval    int
+	step        int
 	percentage  float32
 	wentUp      bool
 	lastSuccess float32
@@ -59,13 +60,14 @@ func New[V any](size int, samples int) *T[V] {
 		percentage: 6.25,
 		size:       size,
 		lruPct:     lruPct,
+		step:       10,
 	}
 }
 
 func (t *T[V]) Get(key string) (*V, bool) {
 	t.interval++
 
-	if t.interval == 5000 {
+	if t.interval == t.step {
 		t.interval = 0
 
 		success := float32(t.hits) / (float32(t.misses) + float32(t.hits))
@@ -91,7 +93,16 @@ func (t *T[V]) Get(key string) (*V, bool) {
 		t.percentage *= 0.98
 		if t.lastSuccess-success < -0.05 || t.lastSuccess-success > 0.05 {
 			t.percentage = 6.25
+
+			if t.step < 5000000 {
+				t.step *= 10
+			}
+		} else {
+			if t.step > 100 {
+				t.step /= 10
+			}
 		}
+
 		t.lastSuccess = success
 		t.hits = 0
 		t.misses = 0
