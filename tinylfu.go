@@ -18,7 +18,7 @@ type T[V any] struct {
 	data        map[string]*Element[slruItem[V]]
 	hits        uint64
 	misses      uint64
-	lruPct      int
+	lruPct      float32
 	interval    int
 	percentage  float32
 	wentUp      bool
@@ -69,48 +69,26 @@ func (t *T[V]) Get(key string) (*V, bool) {
 		t.interval = 0
 
 		success := float32(t.hits) / (float32(t.misses) + float32(t.hits))
-
+		var newPct = t.lruPct
 		if success >= t.lastSuccess {
 			if t.wentUp {
-				newPct := float32(t.lruPct) + t.percentage
-				if newPct >= 100 {
-					newPct = 100
-				}
-				t.lru.cap = (int(newPct) * t.size) / 100
-				t.slru.twocap = int(float32(t.size) * ((100.0 - newPct) / 100.0))
-				t.slru.onecap = int(0.2 * float64(t.slru.twocap))
+				newPct = t.lruPct + t.percentage
 			} else {
-				newPct := float32(t.lruPct) - t.percentage
-				if newPct <= 0 {
-					newPct = 0
-				}
-				t.lru.cap = (int(newPct) * t.size) / 100
-				t.slru.twocap = int(float32(t.size) * ((100.0 - newPct) / 100.0))
-				t.slru.onecap = int(0.2 * float64(t.slru.twocap))
+				newPct = t.lruPct - t.percentage
 				t.wentUp = false
 			}
 		} else {
 			if t.wentUp {
-				newPct := float32(t.lruPct) - t.percentage
-				if newPct <= 0 {
-					newPct = 0
-				}
-				t.lru.cap = (int(newPct) * t.size) / 100
-				t.slru.twocap = int(float32(t.size) * ((100.0 - newPct) / 100.0))
-				t.slru.onecap = int(0.2 * float64(t.slru.twocap))
+				newPct = (t.lruPct) - t.percentage
 			} else {
-				newPct := float32(t.lruPct) + t.percentage
-				if newPct >= 100 {
-					newPct = 100
-				}
-				t.lru.cap = (int(newPct) * t.size) / 100
-				t.slru.twocap = int(float32(t.size) * ((100.0 - newPct) / 100.0))
-				t.slru.onecap = int(0.2 * float64(t.slru.twocap))
+				newPct = t.lruPct + t.percentage
 				t.wentUp = true
 			}
 		}
 
-		t.percentage -= 0.98
+		t.setCaps(newPct)
+
+		t.percentage *= 0.98
 		t.lastSuccess = success
 		t.hits = 0
 		t.misses = 0
@@ -142,6 +120,28 @@ func (t *T[V]) Get(key string) (*V, bool) {
 	}
 
 	return &v, true
+}
+
+func (t *T[V]) setCaps(percentage float32) {
+	if percentage < 1 {
+		percentage = 1
+	}
+
+	if percentage > 99 {
+		percentage = 99
+	}
+	t.lru.cap = (int(percentage) * t.size) / 100
+	if t.lru.cap < 1 {
+		t.lru.cap = 1
+	}
+	t.slru.twocap = int(float32(t.size) * ((100.0 - percentage) / 100.0))
+	if t.slru.twocap < 1 {
+		t.slru.twocap = 1
+	}
+	t.slru.onecap = int(0.2 * float64(t.slru.twocap))
+	if t.slru.onecap < 1 {
+		t.slru.onecap = 1
+	}
 }
 
 func (t *T[V]) Add(key string, val V) {
