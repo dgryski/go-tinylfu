@@ -65,7 +65,7 @@ func New[V any](size int, samples int) *T[V] {
 func (t *T[V]) Get(key string) (*V, bool) {
 	t.interval++
 
-	if t.interval == 5000 {
+	if t.interval == 100 {
 		t.interval = 0
 
 		success := float32(t.hits) / (float32(t.misses) + float32(t.hits))
@@ -88,7 +88,7 @@ func (t *T[V]) Get(key string) (*V, bool) {
 
 		t.setCaps(newPct)
 
-		t.percentage *= 0.9
+		t.percentage *= 0.98
 		t.lastSuccess = success
 		t.hits = 0
 		t.misses = 0
