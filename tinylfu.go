@@ -2,7 +2,7 @@
 /*
    http://arxiv.org/abs/1512.00727
 */
-package main
+package tinylfu
 
 import (
 	"github.com/dgryski/go-metro"
@@ -160,7 +160,7 @@ func (t *T[V]) resize1() {
 
 	for t.slru.one.Len() > (t.slru.onecap) && resizes < 1000 {
 		// reuse the tail item
-		last := t.slru.victim(true)
+		last := t.slru.victim()
 		if last == nil {
 			break
 		}
@@ -236,7 +236,7 @@ func (t *T[V]) Add(key string, val V) {
 	}
 
 	// estimate count of what will be evicted from slru
-	victim := t.slru.victim(false)
+	victim := t.slru.victim()
 	if victim == nil {
 		t.slru.add(oitem)
 		return

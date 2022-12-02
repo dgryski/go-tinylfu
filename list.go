@@ -10,7 +10,7 @@
 //	}
 //
 // Element is an element of a linked list.
-package main
+package tinylfu
 
 type Element[T any] struct {
 	// Next and previous pointers in the doubly-linked list of elements.

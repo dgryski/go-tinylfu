@@ -1,4 +1,4 @@
-package main
+package tinylfu
 
 type slruItem[V any] struct {
 	listid int
@@ -82,19 +82,14 @@ func (slru *slruCache[V]) add(newitem slruItem[V]) {
 	slru.one.MoveToFront(e)
 }
 
-func (slru *slruCache[V]) victim(isRemove bool) *Element[slruItem[V]] {
+func (slru *slruCache[V]) victim() *Element[slruItem[V]] {
 
 	if slru.Len() < slru.onecap+slru.twocap {
-		//if isRemove {
-		//	fmt.Println("hello")
-		//}
 		return nil
 	}
 
 	v := slru.one.Back()
-	//if v == nil {
-	//	fmt.Println("aryeh")
-	//}
+
 	return v
 }
 
