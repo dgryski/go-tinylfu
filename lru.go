@@ -1,4 +1,6 @@
-package tinylfu
+package main
+
+import "fmt"
 
 // Cache is an LRU cache.  It is not safe for concurrent access.
 type lruCache[V any] struct {
@@ -29,7 +31,11 @@ func (lru *lruCache[V]) add(newitem slruItem[V]) (oitem slruItem[V], evicted boo
 
 	// reuse the tail item
 	e := lru.ll.Back()
-
+	if e == nil {
+		en := lru.ll.Len()
+		fmt.Println(en)
+		fmt.Println("aryeh")
+	}
 	delete(lru.data, e.Value.key)
 
 	oitem = *e.Value

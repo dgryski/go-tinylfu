@@ -10,7 +10,7 @@
 //	}
 //
 // Element is an element of a linked list.
-package tinylfu
+package main
 
 type Element[T any] struct {
 	// Next and previous pointers in the doubly-linked list of elements.
@@ -48,6 +48,13 @@ func (e *Element[T]) Prev() *Element[T] {
 type List[T any] struct {
 	root Element[T] // sentinel list element, only &root, root.prev, and root.next are used
 	len  int        // current list length excluding (this) sentinel element
+}
+
+func (l *List[T]) Shorten() *List[T] {
+	l.root.next = &l.root
+	l.root.prev = &l.root
+	l.len = 0
+	return l
 }
 
 // Init initializes or clears list l.

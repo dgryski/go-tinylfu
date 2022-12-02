@@ -1,4 +1,4 @@
-package tinylfu
+package main
 
 type slruItem[V any] struct {
 	listid int
@@ -24,7 +24,7 @@ func newSLRU[V any](onecap, twocap int, data map[string]*Element[slruItem[V]]) *
 	}
 }
 
-// get updates the cache data structures for a get
+// xxget updates the cache data structures for a get
 func (slru *slruCache[V]) get(v *Element[slruItem[V]]) {
 
 	// already on list two?
@@ -82,15 +82,20 @@ func (slru *slruCache[V]) add(newitem slruItem[V]) {
 	slru.one.MoveToFront(e)
 }
 
-func (slru *slruCache[V]) victim() *slruItem[V] {
+func (slru *slruCache[V]) victim(isRemove bool) *Element[slruItem[V]] {
 
 	if slru.Len() < slru.onecap+slru.twocap {
+		//if isRemove {
+		//	fmt.Println("hello")
+		//}
 		return nil
 	}
 
 	v := slru.one.Back()
-
-	return v.Value
+	//if v == nil {
+	//	fmt.Println("aryeh")
+	//}
+	return v
 }
 
 // Len returns the total number of items in the cache

@@ -1,4 +1,4 @@
-package tinylfu
+package main
 
 import (
 	"math"

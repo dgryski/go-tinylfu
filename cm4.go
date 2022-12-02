@@ -1,4 +1,4 @@
-package tinylfu
+package main
 
 // cm4 is a small conservative-update count-min sketch implementation with 4-bit counters
 type cm4 struct {

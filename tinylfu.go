@@ -2,7 +2,7 @@
 /*
    http://arxiv.org/abs/1512.00727
 */
-package tinylfu
+package main
 
 import (
 	"github.com/dgryski/go-metro"
@@ -26,9 +26,10 @@ type T[V any] struct {
 	madeStepBigger bool
 	lastSuccess    float32
 	size           int
+	withResize     bool
 }
 
-func New[V any](size int, samples int) *T[V] {
+func New[V any](size int, samples int, withResize bool) *T[V] {
 
 	const lruPct = 1
 	lruSize := (lruPct * size) / 100
@@ -61,14 +62,16 @@ func New[V any](size int, samples int) *T[V] {
 		percentage: 6.25,
 		size:       size,
 		lruPct:     lruPct,
-		step:       1000,
+		step:       50000,
+
+		withResize: withResize,
 	}
 }
 
 func (t *T[V]) resize() {
 	t.interval++
 
-	if t.interval == t.size {
+	if t.interval == t.step {
 
 		success := float32(t.hits) / (float32(t.misses) + float32(t.hits))
 		var newPct = t.lruPct
@@ -89,12 +92,12 @@ func (t *T[V]) resize() {
 				t.wentUp = true
 			}
 		}
-		if newPct < 0 {
-			newPct = 0
+		if newPct < 1 {
+			newPct = 1
 		}
 
-		if newPct > 100 {
-			newPct = 100
+		if newPct > 99 {
+			newPct = 99
 		}
 
 		t.lruPct = newPct
@@ -104,23 +107,17 @@ func (t *T[V]) resize() {
 
 		if t.lastSuccess-success < -0.05 || t.lastSuccess-success > 0.05 {
 			t.percentage = 6.25
-			t.hits = 0
-			t.misses = 0
 		}
 
-		if t.hits+t.misses > 10000000 {
-			t.hits = 0
-			t.misses = 0
-		}
-
+		t.hits = 0
+		t.misses = 0
 		t.interval = 0
 		t.lastSuccess = success
-
+		t.resize1()
 	}
 }
 
 func (t *T[V]) Get(key string) (*V, bool) {
-	t.resize()
 	t.w++
 	if t.w == t.samples {
 		t.c.reset()
@@ -149,6 +146,45 @@ func (t *T[V]) Get(key string) (*V, bool) {
 	return &v, true
 }
 
+const resize_gag = 1000
+
+func (t *T[V]) resize1() {
+	var resizes = 0
+	for t.lru.ll.Len() > t.lru.cap && resizes < resize_gag {
+		// reuse the tail item
+		last := t.lru.ll.Back()
+		t.lru.ll.Remove(last)
+		t.slru.add(*last.Value)
+		resizes++
+	}
+
+	for t.slru.one.Len() > (t.slru.onecap) && resizes < 1000 {
+		// reuse the tail item
+		last := t.slru.victim(true)
+		if last == nil {
+			break
+		}
+		if last.Value.listid == 2 {
+			t.slru.two.Remove(last)
+		} else {
+			t.slru.one.Remove(last)
+		}
+		resizes++
+		t.lru.add(*last.Value)
+	}
+
+	for t.slru.two.Len() > t.slru.twocap && resizes < 1000 {
+		last := t.slru.two.Back()
+		if last == nil {
+			break
+		}
+		t.slru.two.Remove(last)
+
+		resizes++
+		t.lru.add(*last.Value)
+	}
+}
+
 func (t *T[V]) setCaps(percentage float32) {
 	if percentage < 0 {
 		percentage = 0
@@ -161,12 +197,13 @@ func (t *T[V]) setCaps(percentage float32) {
 	if t.lru.cap < 1 {
 		t.lru.cap = 1
 	}
+
 	slruSize := int(float32(t.size) * ((100.0 - percentage) / 100.0))
 
 	slru20 := int(0.2 * float32(slruSize))
 
 	t.slru.onecap = slru20
-	t.slru.twocap = slruSize
+	t.slru.twocap = slruSize - slru20
 	if t.slru.twocap < 1 {
 		t.slru.twocap = 1
 	}
@@ -174,15 +211,23 @@ func (t *T[V]) setCaps(percentage float32) {
 		t.slru.onecap = 1
 	}
 }
-func (t *T[V]) AllSizes() int {
+
+func (t *T[V]) AllCaps() int {
+
 	return t.lru.cap + t.slru.twocap + t.slru.onecap
+}
+
+func (t *T[V]) AllSizes() int {
+	return t.slru.Len() + t.lru.ll.Len()
 }
 func (t *T[V]) AllKeys() int {
 	return len(t.data)
 }
 
 func (t *T[V]) Add(key string, val V) {
-
+	if t.withResize {
+		t.resize()
+	}
 	newitem := slruItem[V]{0, key, val, metro.Hash64Str(key, 0)}
 
 	oitem, evicted := t.lru.add(newitem)
@@ -191,7 +236,7 @@ func (t *T[V]) Add(key string, val V) {
 	}
 
 	// estimate count of what will be evicted from slru
-	victim := t.slru.victim()
+	victim := t.slru.victim(false)
 	if victim == nil {
 		t.slru.add(oitem)
 		return
@@ -201,7 +246,7 @@ func (t *T[V]) Add(key string, val V) {
 		return
 	}
 
-	vcount := t.c.estimate(victim.keyh)
+	vcount := t.c.estimate(victim.Value.keyh)
 	ocount := t.c.estimate(oitem.keyh)
 
 	if ocount < vcount {
