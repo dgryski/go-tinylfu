@@ -6,6 +6,7 @@ package tinylfu
 
 import (
 	"container/list"
+
 	"github.com/dgryski/go-metro"
 )
 
@@ -29,7 +30,7 @@ func New(size int, samples int) *T {
 	}
 	slruSize := int(float64(size) * ((100.0 - lruPct) / 100.0))
 	if slruSize < 1 {
-		slruSize  = 1
+		slruSize = 1
 
 	}
 	slru20 := int(0.2 * float64(slruSize))
