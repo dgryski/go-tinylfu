@@ -27,12 +27,12 @@ func New[V any](size int, samples int) *T[V] {
 	if lruSize < 1 {
 		lruSize = 1
 	}
-	slruSize := int(float64(size) * ((100.0 - lruPct) / 100.0))
+	slruSize := size - lruSize
 	if slruSize < 1 {
 		slruSize = 1
 
 	}
-	slru20 := int(0.2 * float64(slruSize))
+	slru20 := slruSize / 5
 	if slru20 < 1 {
 		slru20 = 1
 	}
