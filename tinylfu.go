@@ -84,6 +84,21 @@ func (t *T) Get(key string) (interface{}, bool) {
 
 func (t *T) Add(key string, val interface{}) {
 
+	if e, ok := t.data[key]; ok {
+		// Key is already in our cache.
+		// `Add` will act as a `Get` for list movements
+		item := e.Value.(*slruItem)
+		item.value = val
+		t.c.add(item.keyh)
+
+		if item.listid == 0 {
+			t.lru.get(e)
+		} else {
+			t.slru.get(e)
+		}
+		return
+	}
+
 	newitem := slruItem{0, key, val, metro.Hash64Str(key, 0)}
 
 	oitem, evicted := t.lru.add(newitem)
