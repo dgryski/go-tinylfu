@@ -5,7 +5,8 @@
 package tinylfu
 
 import (
-	"github.com/dgryski/go-metro"
+	"hash/maphash"
+
 	"github.com/dgryski/go-tinylfu/internal/list"
 )
 
@@ -17,6 +18,7 @@ type T[V any] struct {
 	lru     *lruCache[V]
 	slru    *slruCache[V]
 	data    map[string]*list.Element[*slruItem[V]]
+	seed    maphash.Seed
 }
 
 func New[V any](size int, samples int) *T[V] {
@@ -49,6 +51,8 @@ func New[V any](size int, samples int) *T[V] {
 
 		lru:  newLRU(lruSize, data),
 		slru: newSLRU(slru20, slruSize-slru20, data),
+
+		seed: maphash.MakeSeed(),
 	}
 }
 
@@ -63,7 +67,7 @@ func (t *T[V]) Get(key string) (V, bool) {
 
 	val, ok := t.data[key]
 	if !ok {
-		keyh := metro.Hash64Str(key, 0)
+		keyh := maphash.String(t.seed, key)
 		t.c.add(keyh)
 		return *new(V), false
 	}
@@ -99,7 +103,7 @@ func (t *T[V]) Add(key string, val V) {
 		return
 	}
 
-	newitem := slruItem[V]{0, key, val, metro.Hash64Str(key, 0)}
+	newitem := slruItem[V]{0, key, val, maphash.String(t.seed, key)}
 
 	oitem, evicted := t.lru.add(newitem)
 	if !evicted {
