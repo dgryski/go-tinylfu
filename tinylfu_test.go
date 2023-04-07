@@ -19,3 +19,16 @@ func TestAddAlreadyInCache(t *testing.T) {
 		t.Errorf("c.Get(foo)=%q, want %q", val, "baz")
 	}
 }
+
+var SinkString string
+var SinkBool bool
+
+func BenchmarkGet(b *testing.B) {
+	t := New[string](64, 640)
+	key := "some arbitrary key"
+	val := "some arbitrary value"
+	t.Add(key, val)
+	for i := 0; i < b.N; i++ {
+		SinkString, SinkBool = t.Get(key)
+	}
+}

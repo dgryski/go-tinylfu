@@ -71,3 +71,29 @@ func TestCM4(t *testing.T) {
 		t.Errorf("cm.estimate(%x)=%d, want 2\n", hash, got)
 	}
 }
+
+func BenchmarkCMAddSaturated(b *testing.B) {
+	cm := newCM4(32)
+	hash := uint64(0x0ddc0ffeebadf00d)
+	for i := 0; i < b.N; i++ {
+		cm.add(hash)
+	}
+}
+
+var SinkByte byte
+
+func BenchmarkCMEstimate(b *testing.B) {
+	cm := newCM4(32)
+	hash := uint64(0x0ddc0ffeebadf00d)
+	cm.add(hash)
+	for i := 0; i < b.N; i++ {
+		SinkByte = cm.estimate(hash)
+	}
+}
+
+func BenchmarkCMReset(b *testing.B) {
+	cm := newCM4(3200)
+	for i := 0; i < b.N; i++ {
+		cm.reset()
+	}
+}
