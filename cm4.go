@@ -13,7 +13,8 @@ func newCM4(w int) *cm4 {
 		panic("cm4: bad width")
 	}
 
-	w32 := nextPowerOfTwo(uint32(w))
+	// use 4 counters per item per level, for a total of 16 counters or 8 bytes per item, matching the TinyLFU paper.
+	w32 := nextPowerOfTwo(uint32(w) * 4)
 	c := cm4{
 		mask: w32 - 1,
 	}
