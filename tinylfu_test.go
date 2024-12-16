@@ -1,9 +1,15 @@
 package tinylfu
 
-import "testing"
+import (
+	"hash/maphash"
+	"testing"
+)
 
 func TestAddAlreadyInCache(t *testing.T) {
-	c := New[string](100, 10000)
+	s := maphash.MakeSeed()
+	c := New[string, string](100, 10000, func(k string) uint64 {
+		return maphash.String(s, k)
+	})
 
 	c.Add("foo", "bar")
 
@@ -24,7 +30,10 @@ var SinkString string
 var SinkBool bool
 
 func BenchmarkGet(b *testing.B) {
-	t := New[string](64, 640)
+	s := maphash.MakeSeed()
+	t := New[string, string](64, 640, func(k string) uint64 {
+		return maphash.String(s, k)
+	})
 	key := "some arbitrary key"
 	val := "some arbitrary value"
 	t.Add(key, val)
