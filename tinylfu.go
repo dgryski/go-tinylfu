@@ -4,24 +4,20 @@
 */
 package tinylfu
 
-import (
-	"hash/maphash"
+import "github.com/dgryski/go-tinylfu/internal/list"
 
-	"github.com/dgryski/go-tinylfu/internal/list"
-)
-
-type T[V any] struct {
+type T[K comparable, V any] struct {
 	c       *cm4
 	bouncer *doorkeeper
 	w       int
 	samples int
-	lru     *lruCache[V]
-	slru    *slruCache[V]
-	data    map[string]*list.Element[*slruItem[V]]
-	seed    maphash.Seed
+	lru     *lruCache[K, V]
+	slru    *slruCache[K, V]
+	data    map[K]*list.Element[*slruItem[K, V]]
+	hash    func(K) uint64
 }
 
-func New[V any](size int, samples int) *T[V] {
+func New[K comparable, V any](size int, samples int, hash func(K) uint64) *T[K, V] {
 
 	const lruPct = 1
 
@@ -39,9 +35,9 @@ func New[V any](size int, samples int) *T[V] {
 		slru20 = 1
 	}
 
-	data := make(map[string]*list.Element[*slruItem[V]], size)
+	data := make(map[K]*list.Element[*slruItem[K, V]], size)
 
-	return &T[V]{
+	return &T[K, V]{
 		c:       newCM4(size),
 		w:       0,
 		samples: samples,
@@ -52,11 +48,11 @@ func New[V any](size int, samples int) *T[V] {
 		lru:  newLRU(lruSize, data),
 		slru: newSLRU(slru20, slruSize-slru20, data),
 
-		seed: maphash.MakeSeed(),
+		hash: hash,
 	}
 }
 
-func (t *T[V]) Get(key string) (V, bool) {
+func (t *T[K, V]) Get(key K) (V, bool) {
 
 	t.w++
 	if t.w == t.samples {
@@ -67,7 +63,7 @@ func (t *T[V]) Get(key string) (V, bool) {
 
 	val, ok := t.data[key]
 	if !ok {
-		keyh := maphash.String(t.seed, key)
+		keyh := t.hash(key)
 		t.c.add(keyh)
 		return *new(V), false
 	}
@@ -86,7 +82,7 @@ func (t *T[V]) Get(key string) (V, bool) {
 	return v, true
 }
 
-func (t *T[V]) Add(key string, val V) {
+func (t *T[K, V]) Add(key K, val V) {
 
 	if e, ok := t.data[key]; ok {
 		// Key is already in our cache.
@@ -103,7 +99,7 @@ func (t *T[V]) Add(key string, val V) {
 		return
 	}
 
-	newitem := slruItem[V]{0, key, val, maphash.String(t.seed, key)}
+	newitem := slruItem[K, V]{0, key, val, t.hash(key)}
 
 	oitem, evicted := t.lru.add(newitem)
 	if !evicted {
