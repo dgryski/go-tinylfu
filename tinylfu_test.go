@@ -7,9 +7,10 @@ import (
 
 func TestAddAlreadyInCache(t *testing.T) {
 	s := maphash.MakeSeed()
-	c := New[string, string](100, 10000, func(k string) uint64 {
-		return maphash.String(s, k)
-	})
+	c := New[string, string](100, 10000,
+		func(k string) uint64 { return maphash.String(s, k) },
+		func(k, v string) {},
+	)
 
 	c.Add("foo", "bar")
 
@@ -31,9 +32,10 @@ var SinkBool bool
 
 func BenchmarkGet(b *testing.B) {
 	s := maphash.MakeSeed()
-	t := New[string, string](64, 640, func(k string) uint64 {
-		return maphash.String(s, k)
-	})
+	t := New[string, string](64, 640,
+		func(k string) uint64 { return maphash.String(s, k) },
+		func(k, v string) {},
+	)
 	key := "some arbitrary key"
 	val := "some arbitrary value"
 	t.Add(key, val)

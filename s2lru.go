@@ -66,7 +66,7 @@ func (slru *slruCache[K, V]) get(v *list.Element[*slruItem[K, V]]) {
 }
 
 // Set sets a value in the cache
-func (slru *slruCache[K, V]) add(newitem slruItem[K, V]) {
+func (slru *slruCache[K, V]) add(newitem slruItem[K, V]) (oitem slruItem[K, V], evicted bool) {
 
 	newitem.listid = 1
 
@@ -81,10 +81,12 @@ func (slru *slruCache[K, V]) add(newitem slruItem[K, V]) {
 
 	delete(slru.data, item.key)
 
+	oitem = *item
 	*item = newitem
 
 	slru.data[item.key] = e
 	slru.one.MoveToFront(e)
+	return oitem, true
 }
 
 func (slru *slruCache[K, V]) victim() *slruItem[K, V] {
