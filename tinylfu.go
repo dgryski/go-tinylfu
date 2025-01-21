@@ -16,12 +16,17 @@ type T[K comparable, V any] struct {
 	data    map[K]*list.Element[*slruItem[K, V]]
 	hash    func(K) uint64
 	evict   func(K, V)
+	replace func(K, V)
 }
 
 type Option[K comparable, V any] func(*T[K, V])
 
-func OnEvict[K comparable, V any](f func(K, V)) Option[K, V] {
+func OnEvict[K comparable, V any](f func(key K, old V)) Option[K, V] {
 	return func(t *T[K, V]) { t.evict = f }
+}
+
+func OnReplace[K comparable, V any](f func(key K, old V)) Option[K, V] {
+	return func(t *T[K, V]) { t.replace = f }
 }
 
 func New[K comparable, V any](size int, samples int, hash func(K) uint64, options ...Option[K, V]) *T[K, V] {
@@ -54,8 +59,9 @@ func New[K comparable, V any](size int, samples int, hash func(K) uint64, option
 		lru:  newLRU(lruSize, data),
 		slru: newSLRU(slru20, slruSize-slru20, data),
 
-		hash:  hash,
-		evict: func(K, V) {},
+		hash:    hash,
+		evict:   ignore[K, V],
+		replace: ignore[K, V],
 	}
 
 	for _, option := range options {
@@ -101,6 +107,7 @@ func (t *T[K, V]) Add(key K, val V) {
 		// Key is already in our cache.
 		// `Add` will act as a `Get` for list movements
 		item := e.Value
+		oval := item.value
 		item.value = val
 		t.c.add(item.keyh)
 
@@ -109,6 +116,8 @@ func (t *T[K, V]) Add(key K, val V) {
 		} else {
 			t.slru.get(e)
 		}
+
+		t.replace(key, oval)
 		return
 	}
 
@@ -145,3 +154,5 @@ func (t *T[K, V]) Add(key K, val V) {
 		t.evict(oitem.key, oitem.value)
 	}
 }
+
+func ignore[K, V any](K, V) {}
