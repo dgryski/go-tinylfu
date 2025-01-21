@@ -15,18 +15,17 @@ type T[K comparable, V any] struct {
 	slru    *slruCache[K, V]
 	data    map[K]*list.Element[*slruItem[K, V]]
 	hash    func(K) uint64
-	drop    func(K, V)
+	evict   func(K, V)
 }
 
-func New[K comparable, V any](size int, samples int, hash func(K) uint64, drop func(K, V)) *T[K, V] {
-	const lruPct = 1
+type Option[K comparable, V any] func(*T[K, V])
 
-	if hash == nil {
-		panic("tinylfu: hash function is required")
-	}
-	if drop == nil {
-		panic("tinylfu: drop function is required")
-	}
+func OnEvict[K comparable, V any](f func(K, V)) Option[K, V] {
+	return func(t *T[K, V]) { t.evict = f }
+}
+
+func New[K comparable, V any](size int, samples int, hash func(K) uint64, options ...Option[K, V]) *T[K, V] {
+	const lruPct = 1
 
 	lruSize := (lruPct * size) / 100
 	if lruSize < 1 {
@@ -44,7 +43,7 @@ func New[K comparable, V any](size int, samples int, hash func(K) uint64, drop f
 
 	data := make(map[K]*list.Element[*slruItem[K, V]], size)
 
-	return &T[K, V]{
+	t := &T[K, V]{
 		c:       newCM4(size),
 		w:       0,
 		samples: samples,
@@ -55,9 +54,15 @@ func New[K comparable, V any](size int, samples int, hash func(K) uint64, drop f
 		lru:  newLRU(lruSize, data),
 		slru: newSLRU(slru20, slruSize-slru20, data),
 
-		hash: hash,
-		drop: drop,
+		hash:  hash,
+		evict: func(K, V) {},
 	}
+
+	for _, option := range options {
+		option(t)
+	}
+
+	return t
 }
 
 func (t *T[K, V]) Get(key K) (V, bool) {
@@ -114,13 +119,13 @@ func (t *T[K, V]) Add(key K, val V) {
 		return
 	}
 
-	t.drop(oitem.key, oitem.value)
+	t.evict(oitem.key, oitem.value)
 
 	// estimate count of what will be evicted from slru
 	victim := t.slru.victim()
 	if victim == nil {
 		if oitem, evicted := t.slru.add(oitem); evicted {
-			t.drop(oitem.key, oitem.value)
+			t.evict(oitem.key, oitem.value)
 		}
 		return
 	}
@@ -137,6 +142,6 @@ func (t *T[K, V]) Add(key K, val V) {
 	}
 
 	if oitem, evicted := t.slru.add(oitem); evicted {
-		t.drop(oitem.key, oitem.value)
+		t.evict(oitem.key, oitem.value)
 	}
 }
