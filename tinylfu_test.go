@@ -33,13 +33,10 @@ func TestOnEvict(t *testing.T) {
 	}
 
 	var evicted []item
-	var expected = []item{
-		{k: "A", v: "1"},
-		{k: "B", v: "2"},
-	}
+	var expected = []item{{k: "B", v: "2"}}
 
 	s := maphash.MakeSeed()
-	c := New[string, string](64, 640,
+	c := New[string, string](2, 20,
 		func(k string) uint64 {
 			return maphash.String(s, k)
 		},
@@ -63,17 +60,11 @@ func TestOnReplace(t *testing.T) {
 	}
 
 	var evicted []item
-	var expectedEvicted = []item{
-		{k: "A", v: "1"},
-	}
-
 	var replaced []item
-	var expectedReplaced = []item{
-		{k: "A", v: "1"},
-	}
+	var expected = []item{{k: "A", v: "1"}}
 
 	s := maphash.MakeSeed()
-	c := New[string, string](64, 640,
+	c := New[string, string](10, 20,
 		func(k string) uint64 {
 			return maphash.String(s, k)
 		},
@@ -89,11 +80,11 @@ func TestOnReplace(t *testing.T) {
 	c.Add("B", "2")
 	c.Add("A", "3")
 
-	if !slices.Equal(evicted, expectedEvicted) {
-		t.Errorf("evicted=%+v, expected=%+v", evicted, expectedEvicted)
+	if !slices.Equal(evicted, nil) {
+		t.Errorf("evicted=%+v, expected=%+v", evicted, nil)
 	}
-	if !slices.Equal(replaced, expectedReplaced) {
-		t.Errorf("replaced=%+v, expected=%+v", replaced, expectedReplaced)
+	if !slices.Equal(replaced, expected) {
+		t.Errorf("replaced=%+v, expected=%+v", replaced, expected)
 	}
 }
 

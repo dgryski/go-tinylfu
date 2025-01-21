@@ -39,7 +39,6 @@ func New[K comparable, V any](size int, samples int, hash func(K) uint64, option
 	slruSize := size - lruSize
 	if slruSize < 1 {
 		slruSize = 1
-
 	}
 	slru20 := slruSize / 5
 	if slru20 < 1 {
@@ -128,8 +127,6 @@ func (t *T[K, V]) Add(key K, val V) {
 		return
 	}
 
-	t.evict(oitem.key, oitem.value)
-
 	// estimate count of what will be evicted from slru
 	victim := t.slru.victim()
 	if victim == nil {
@@ -140,6 +137,7 @@ func (t *T[K, V]) Add(key K, val V) {
 	}
 
 	if !t.bouncer.allow(oitem.keyh) {
+		t.evict(oitem.key, oitem.value)
 		return
 	}
 
@@ -147,6 +145,7 @@ func (t *T[K, V]) Add(key K, val V) {
 	ocount := t.c.estimate(oitem.keyh)
 
 	if ocount < vcount {
+		t.evict(oitem.key, oitem.value)
 		return
 	}
 

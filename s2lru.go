@@ -65,7 +65,7 @@ func (slru *slruCache[K, V]) get(v *list.Element[*slruItem[K, V]]) {
 	slru.two.MoveToFront(back)
 }
 
-// Set sets a value in the cache
+// add adds a value to the cache
 func (slru *slruCache[K, V]) add(newitem slruItem[K, V]) (oitem slruItem[K, V], evicted bool) {
 
 	newitem.listid = 1
@@ -78,8 +78,6 @@ func (slru *slruCache[K, V]) add(newitem slruItem[K, V]) (oitem slruItem[K, V], 
 	// reuse the tail item
 	e := slru.one.Back()
 	item := e.Value
-
-	delete(slru.data, item.key)
 
 	oitem = *item
 	*item = newitem
