@@ -2,6 +2,7 @@ package tinylfu
 
 import (
 	"hash/maphash"
+	"slices"
 	"testing"
 )
 
@@ -23,6 +24,67 @@ func TestAddAlreadyInCache(t *testing.T) {
 	val, _ = c.Get("foo")
 	if val != "baz" {
 		t.Errorf("c.Get(foo)=%q, want %q", val, "baz")
+	}
+}
+
+func TestOnEvict(t *testing.T) {
+	type item struct {
+		k, v string
+	}
+
+	var evicted []item
+	var expected = []item{{k: "B", v: "2"}}
+
+	s := maphash.MakeSeed()
+	c := New[string, string](2, 20,
+		func(k string) uint64 {
+			return maphash.String(s, k)
+		},
+		OnEvict(func(k, v string) {
+			evicted = append(evicted, item{k, v})
+		}),
+	)
+
+	c.Add("A", "1")
+	c.Add("B", "2")
+	c.Add("C", "3")
+
+	if !slices.Equal(evicted, expected) {
+		t.Errorf("evicted=%+v, expected=%+v", evicted, expected)
+	}
+}
+
+func TestOnReplace(t *testing.T) {
+	type item struct {
+		k, v string
+	}
+
+	var evicted []item
+	var replaced []item
+	var expected = []item{{k: "A", v: "1"}}
+
+	s := maphash.MakeSeed()
+	c := New[string, string](10, 20,
+		func(k string) uint64 {
+			return maphash.String(s, k)
+		},
+		OnEvict(func(k, v string) {
+			evicted = append(evicted, item{k, v})
+		}),
+		OnReplace(func(k, v string) {
+			replaced = append(replaced, item{k, v})
+		}),
+	)
+
+	c.Add("A", "1")
+	c.Add("B", "2")
+	c.Add("A", "3")
+
+	if !slices.Equal(evicted, nil) {
+		t.Errorf("evicted=%+v, expected=%+v", evicted, nil)
+	}
+	if !slices.Equal(replaced, expected) {
+		t.Errorf("replaced=%+v, expected=%+v", replaced, expected)
 	}
 }
 
