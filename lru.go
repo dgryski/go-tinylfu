@@ -33,10 +33,12 @@ func (lru *lruCache[K, V]) add(newitem slruItem[K, V]) (oitem slruItem[K, V], ev
 	e := lru.ll.Back()
 	item := e.Value
 
+	delete(lru.data, item.key) // delete old key
+
 	oitem = *item
 	*item = newitem
 
-	lru.data[item.key] = e
+	lru.data[item.key] = e // insert new key
 	lru.ll.MoveToFront(e)
 
 	return oitem, true

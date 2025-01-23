@@ -79,10 +79,12 @@ func (slru *slruCache[K, V]) add(newitem slruItem[K, V]) (oitem slruItem[K, V], 
 	e := slru.one.Back()
 	item := e.Value
 
+	delete(slru.data, item.key) // delete old key
+
 	oitem = *item
 	*item = newitem
 
-	slru.data[item.key] = e
+	slru.data[item.key] = e // insert new key
 	slru.one.MoveToFront(e)
 	return oitem, true
 }
