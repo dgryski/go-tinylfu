@@ -88,6 +88,21 @@ func TestOnReplace(t *testing.T) {
 	}
 }
 
+func TestNoCachePollution(t *testing.T) {
+	c := New[int, int](10, 100, func(k int) uint64 { return uint64(k) })
+
+	for i := 0; i < 100; i++ {
+		c.Add(i, i)
+
+		for j := 0; j < i; j++ {
+			v, ok := c.Get(j)
+			if ok && v != j {
+				t.Fatalf("c.Get(%d)=%d, want %d", j, v, j)
+			}
+		}
+	}
+}
+
 var SinkString string
 var SinkBool bool
 
